@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Take a quick second look at a link before you open it.">
+  <title>PhishGuard — Check a link</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="PhishGuard home">
+        <span class="brand-mark" aria-hidden="true">PG</span>
+        <span>PhishGuard</span>
+      </a>
+      <span class="header-note">A second look before you click</span>
+    </header>
+
+    <section class="hero" aria-labelledby="page-title">
+      <p class="eyebrow">LINK CHECK</p>
+      <h1 id="page-title">Not sure about a link?</h1>
+      <p class="intro">Drop it here. We’ll point out anything that looks a little off.</p>
+
+      <form class="check-form" id="check-form">
+        <label for="url">Your link</label>
+        <div class="input-row">
+          <input
+            id="url"
+            name="url"
+            type="text"
+            inputmode="url"
+            autocomplete="url"
+            maxlength="2048"
+            placeholder="https://example.com"
+            aria-describedby="url-help"
+            required
+          >
+          <button type="submit">Check link</button>
+        </div>
+        <p id="url-help" class="input-help">No need to open it. You can leave off https://.</p>
+      </form>
+
+      <div id="result" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("check-form");
+    const input = document.getElementById("url");
+    const button = form.querySelector("button");
+    const output = document.getElementById("result");
+
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function renderError(message) {
+      const card = el("section", "result-card result-error");
+      card.setAttribute("aria-labelledby", "result-title");
+      card.append(el("p", "result-kicker", "LET’S TRY AGAIN"));
+      const title = el("h2", "", "We couldn’t check that link");
+      title.id = "result-title";
+      card.append(title, el("p", "error-message", message));
+      output.replaceChildren(card);
+    }
+
+    function renderResult(result) {
+      const level = result.score >= 40 ? "high" : result.score >= 20 ? "warning" : "low";
+      const copy = {
+        high: ["TAKE CARE", "This one looks suspicious"],
+        warning: ["WORTH A CLOSER LOOK", "A couple of things caught our eye"],
+        low: ["NOTHING OBVIOUS STOOD OUT", "Looks alright at first glance"],
+      }[level];
+
+      const card = el("section", `result-card result-${level}`);
+      card.setAttribute("aria-labelledby", "result-title");
+
+      const heading = el("div", "result-heading");
+      const inner = el("div");
+      const title = el("h2", "", copy[1]);
+      title.id = "result-title";
+      inner.append(el("p", "result-kicker", copy[0]), title);
+      heading.append(inner);
+
+      const host = el("p", "checked-host", "The address you entered: ");
+      host.append(el("strong", "", result.hostname));
+
+      const list = el("ul", "reason-list");
+      for (const reason of result.reasons) list.append(el("li", "", reason));
+
+      card.append(
+        heading,
+        host,
+        list,
+        el("p", "disclaimer", "This is just a quick check, not a guarantee. If the message feels off, trust your gut and go to the website directly."),
+      );
+      output.replaceChildren(card);
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      button.disabled = true;
+      try {
+        const response = await fetch("/api/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: input.value }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.error) {
+          renderError(data.error || "Something went wrong. Please try again.");
+        } else {
+          renderResult(data);
+        }
+      } catch {
+        renderError("We couldn’t reach the checker. Please check your connection and try again.");
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
