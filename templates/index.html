@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Take a quick second look at a link before you open it.">
+  <title>PhishGuard — Check a link</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="PhishGuard home">
+        <span class="brand-mark" aria-hidden="true">PG</span>
+        <span>PhishGuard</span>
+      </a>
+      <span class="header-note">A second look before you click</span>
+    </header>
+
+    <section class="hero" aria-labelledby="page-title">
+      <p class="eyebrow">LINK CHECK</p>
+      <h1 id="page-title">Not sure about a link?</h1>
+      <p class="intro">Drop it here. We’ll point out anything that looks a little off.</p>
+
+      <form class="check-form" action="/" method="post">
+        <label for="url">Your link</label>
+        <div class="input-row">
+          <input
+            id="url"
+            name="url"
+            type="text"
+            inputmode="url"
+            autocomplete="url"
+            maxlength="2048"
+            placeholder="https://example.com"
+            value="{{ submitted_url }}"
+            aria-describedby="url-help"
+            required
+          >
+          <button type="submit">Check link</button>
+        </div>
+        <p id="url-help" class="input-help">No need to open it. You can leave off https://.</p>
+      </form>
+
+      {% if result %}
+      <section class="result-card {% if result.error %}result-error{% elif result.score >= 40 %}result-high{% elif result.score >= 20 %}result-warning{% else %}result-low{% endif %}" aria-live="polite" aria-labelledby="result-title">
+        {% if result.error %}
+          <p class="result-kicker">LET’S TRY AGAIN</p>
+          <h2 id="result-title">We couldn’t check that link</h2>
+          <p class="error-message">{{ result.error }}</p>
+        {% else %}
+          <div class="result-heading">
+            <div>
+              {% if result.score >= 40 %}
+                <p class="result-kicker">TAKE CARE</p>
+                <h2 id="result-title">This one looks suspicious</h2>
+              {% elif result.score >= 20 %}
+                <p class="result-kicker">WORTH A CLOSER LOOK</p>
+                <h2 id="result-title">A couple of things caught our eye</h2>
+              {% else %}
+                <p class="result-kicker">NOTHING OBVIOUS STOOD OUT</p>
+                <h2 id="result-title">Looks alright at first glance</h2>
+              {% endif %}
+            </div>
+          </div>
+          <p class="checked-host">The address you entered: <strong>{{ result.hostname }}</strong></p>
+          <ul class="reason-list">
+            {% for reason in result.reasons %}
+            <li>{{ reason }}</li>
+            {% endfor %}
+          </ul>
+          <p class="disclaimer">This is just a quick check, not a guarantee. If the message feels off, trust your gut and go to the website directly.</p>
+        {% endif %}
+      </section>
+      {% endif %}
+    </section>
+
+  </main>
+</body>
+</html>
